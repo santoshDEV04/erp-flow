@@ -1,5 +1,7 @@
 import express from "express";
-import { createQuotation, updateQuotationStatus } from "../controllers/quotation.controller.js";
+import { createQuotation, updateQuotationStatus,
+    getQuotations
+ } from "../controllers/quotation.controller.js";
 import { authenticate } from "../middleware/auth.middleware.js";
 import { authorize } from "../middleware/role.middleware.js";
 
@@ -18,5 +20,7 @@ router.patch(
     authorize("SALES_USER"),
     updateQuotationStatus
 );
+
+router.get("/", authenticate, getQuotations);
 
 export default router;

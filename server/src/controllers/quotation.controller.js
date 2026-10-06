@@ -326,3 +326,69 @@ export const updateQuotationStatus = async (req, res) => {
         client.release();
     }
 };
+
+export const getQuotations = async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT
+                q.id,
+                q.quotation_number,
+                q.valid_until,
+                q.status,
+                q.grand_total,
+                q.created_at,
+
+                e.id AS enquiry_id,
+                e.enquiry_number,
+
+                c.id AS customer_id,
+                c.company_name,
+                c.contact_person,
+
+                COALESCE(
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'product_id', p.id,
+                            'product_code', p.product_code,
+                            'product_name', p.name,
+                            'quantity', qi.quantity,
+                            'unit_price', qi.unit_price,
+                            'discount_pct', qi.discount_pct,
+                            'gst_pct', qi.gst_pct,
+                            'line_amount', qi.line_amount
+                        )
+                    ) FILTER (WHERE qi.id IS NOT NULL),
+                    '[]'
+                ) AS items
+
+            FROM quotations q
+
+            JOIN enquiries e
+                ON q.enquiry_id = e.id
+
+            JOIN customers c
+                ON q.customer_id = c.id
+
+            LEFT JOIN quotation_items qi
+                ON q.id = qi.quotation_id
+
+            LEFT JOIN products p
+                ON qi.product_id = p.id
+
+            GROUP BY q.id, e.id, c.id
+
+            ORDER BY q.created_at DESC`
+        );
+
+        return res.status(200).json({
+            quotations: result.rows
+        });
+
+    } catch (error) {
+        console.error("Get quotations error:", error);
+
+        return res.status(500).json({
+            message: "Internal server error"
+        });
+    }
+};

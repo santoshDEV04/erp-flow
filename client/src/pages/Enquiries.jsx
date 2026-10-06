@@ -25,11 +25,6 @@ const Enquiries = () => {
         },
     ])
 
-    useEffect(() => {
-        fetchEnquiries()
-        fetchCustomers()
-        fetchProducts()
-    }, [])
 
     const fetchEnquiries = async () => {
         try {
@@ -58,6 +53,13 @@ const Enquiries = () => {
         }
     }
 
+    useEffect(() => {
+        fetchEnquiries()
+        fetchCustomers()
+        fetchProducts()
+    }, [])
+
+    
     const handleChange = e => {
         setForm({
             ...form,

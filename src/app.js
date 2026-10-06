@@ -2,6 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import authRoutes from "./routes/auth.routes.js"
 import costumerRoutes from "./routes/customer.routes.js"
+import enquiryRoutes from "./routes/enquiry.routes.js"
 
 const app = express();
 
@@ -17,5 +18,6 @@ app.get("/", (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/customers", costumerRoutes)
+app.use("/api/enquiries", enquiryRoutes)
 
 export default app;

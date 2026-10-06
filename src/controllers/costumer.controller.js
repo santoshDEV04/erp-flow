@@ -42,3 +42,30 @@ export const createCustomer = async (req, res) => {
         })
     }
 }
+
+export const getCustomers = async (req, res) => {
+    try {
+        const result = await query(
+            `SELECT
+                id,
+                company_name,
+                contact_person,
+                mobile,
+                email,
+                city,
+                created_at
+            FROM customers
+            ORDER BY created_at DESC`
+        );
+
+        return res.status(200).json({
+            customers: result.rows
+        })
+    } catch (error) {
+        console.error("Get customers error:", error);
+
+        return res.status(500).json({
+            message: "Internal server error"
+        });
+    }
+}

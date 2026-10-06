@@ -441,3 +441,70 @@ export const dispatchSalesOrder = async (req, res) => {
         client.release();
     }
 };
+
+export const getSalesOrders = async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT
+                so.id,
+                so.order_number,
+                so.order_date,
+                so.total_amount,
+                so.status,
+                so.created_at,
+
+                q.id AS quotation_id,
+                q.quotation_number,
+
+                c.id AS customer_id,
+                c.company_name,
+                c.contact_person,
+
+                COALESCE(
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'product_id', p.id,
+                            'product_code', p.product_code,
+                            'product_name', p.name,
+                            'quantity', soi.quantity,
+                            'unit_price', soi.unit_price,
+                            'line_amount', soi.line_amount
+                        )
+                    ) FILTER (WHERE soi.id IS NOT NULL),
+                    '[]'
+                ) AS items
+
+            FROM sales_orders so
+
+            JOIN quotations q
+                ON so.quotation_id = q.id
+
+            JOIN customers c
+                ON so.customer_id = c.id
+
+            LEFT JOIN sales_order_items soi
+                ON so.id = soi.sales_order_id
+
+            LEFT JOIN products p
+                ON soi.product_id = p.id
+
+            GROUP BY
+                so.id,
+                q.id,
+                c.id
+
+            ORDER BY so.created_at DESC`
+        );
+
+        return res.status(200).json({
+            salesOrders: result.rows
+        });
+
+    } catch (error) {
+        console.error("Get Sales Orders error:", error);
+
+        return res.status(500).json({
+            message: "Internal server error"
+        });
+    }
+};

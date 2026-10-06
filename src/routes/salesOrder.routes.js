@@ -3,7 +3,8 @@ import express from "express";
 import {
     convertQuotationToSalesOrder,
     confirmSalesOrder,
-    dispatchSalesOrder
+    dispatchSalesOrder,
+    getSalesOrders
 } from "../controllers/salesOrder.controller.js";
 
 import { authenticate } from "../middleware/auth.middleware.js";
@@ -31,5 +32,12 @@ router.post(
     authorize("ADMIN"),
     dispatchSalesOrder
 );
+
+router.get(
+    "/",
+    authenticate,
+    getSalesOrders
+);
+
 
 export default router;

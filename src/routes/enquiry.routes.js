@@ -17,6 +17,4 @@ router.get("/",
     getEnquiries
 )
 
-router.get("/", authenticate, getEnquiries )
-
 export default router;

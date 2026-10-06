@@ -7,8 +7,12 @@ const Enquiries = () => {
     const [products, setProducts] = useState([])
 
     const [showForm, setShowForm] = useState(false)
+    const [showCustomerForm, setShowCustomerForm] = useState(false)
+
     const [loading, setLoading] = useState(false)
+    const [creatingCustomer, setCreatingCustomer] = useState(false)
     const [error, setError] = useState('')
+    const [customerError, setCustomerError] = useState('')
 
     const [form, setForm] = useState({
         enquiry_number: '',
@@ -18,6 +22,14 @@ const Enquiries = () => {
         notes: '',
     })
 
+    const [customerForm, setCustomerForm] = useState({
+        company_name: '',
+        contact_person: '',
+        mobile: '',
+        email: '',
+        city: '',
+    })
+
     const [items, setItems] = useState([
         {
             product_id: '',
@@ -25,6 +37,26 @@ const Enquiries = () => {
         },
     ])
 
+    // Load initial page data
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                const [enquiriesResponse, customersResponse, productsResponse] = await Promise.all([
+                    api.get('/enquiries'),
+                    api.get('/customers'),
+                    api.get('/inventory'),
+                ])
+
+                setEnquiries(enquiriesResponse.data.enquiries || [])
+                setCustomers(customersResponse.data.customers || [])
+                setProducts(productsResponse.data.inventory || [])
+            } catch (error) {
+                console.error(error)
+            }
+        }
+
+        loadData()
+    }, [])
 
     const fetchEnquiries = async () => {
         try {
@@ -35,34 +67,16 @@ const Enquiries = () => {
         }
     }
 
-    const fetchCustomers = async () => {
-        try {
-            const response = await api.get('/customers')
-            setCustomers(response.data.customers || [])
-        } catch (error) {
-            console.error(error)
-        }
-    }
-
-    const fetchProducts = async () => {
-        try {
-            const response = await api.get('/inventory')
-            setProducts(response.data.inventory || [])
-        } catch (error) {
-            console.error(error)
-        }
-    }
-
-    useEffect(() => {
-        fetchEnquiries()
-        fetchCustomers()
-        fetchProducts()
-    }, [])
-
-    
     const handleChange = e => {
         setForm({
             ...form,
+            [e.target.name]: e.target.value,
+        })
+    }
+
+    const handleCustomerChange = e => {
+        setCustomerForm({
+            ...customerForm,
             [e.target.name]: e.target.value,
         })
     }
@@ -89,6 +103,65 @@ const Enquiries = () => {
         if (items.length === 1) return
 
         setItems(items.filter((_, i) => i !== index))
+    }
+
+    const createCustomer = async e => {
+        e.preventDefault()
+
+        try {
+            setCreatingCustomer(true)
+            setCustomerError('')
+
+            if (!customerForm.company_name.trim()) {
+                setCustomerError('Company name is required')
+                return
+            }
+
+            if (!customerForm.contact_person.trim()) {
+                setCustomerError('Contact person is required')
+                return
+            }
+
+            const response = await api.post('/customers', {
+                company_name: customerForm.company_name.trim(),
+                contact_person: customerForm.contact_person.trim(),
+                mobile: customerForm.mobile.trim(),
+                email: customerForm.email.trim(),
+                city: customerForm.city.trim(),
+            })
+
+            const newCustomer = response.data.customer
+
+            if (!newCustomer) {
+                throw new Error('Customer was created but the server did not return customer data')
+            }
+
+            // Add the new customer to the dropdown
+            setCustomers(prev => [newCustomer, ...prev])
+
+            // Automatically select the newly created customer
+            setForm(prev => ({
+                ...prev,
+                customer_id: String(newCustomer.id),
+            }))
+
+            // Reset customer form
+            setCustomerForm({
+                company_name: '',
+                contact_person: '',
+                mobile: '',
+                email: '',
+                city: '',
+            })
+
+            setShowCustomerForm(false)
+        } catch (error) {
+            console.error(error)
+
+            setCustomerError(error.response?.data?.message || 'Failed to create customer')
+        } finally {
+            setCreatingCustomer(false)
+        }
     }
 
     const handleSubmit = async e => {
@@ -126,6 +199,8 @@ const Enquiries = () => {
                 },
             ])
 
+            setShowCustomerForm(false)
+
             fetchEnquiries()
         } catch (error) {
             setError(error.response?.data?.message || 'Failed to create enquiry')
@@ -145,7 +220,10 @@ const Enquiries = () => {
                 </div>
 
                 <button
-                    onClick={() => setShowForm(!showForm)}
+                    onClick={() => {
+                        setShowForm(!showForm)
+                        setError('')
+                    }}
                     className="bg-gray-900 text-white px-4 py-2 rounded-md text-sm w-full sm:w-auto"
                 >
                     {showForm ? 'Close' : '+ New Enquiry'}
@@ -165,6 +243,7 @@ const Enquiries = () => {
 
                     <form onSubmit={handleSubmit}>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Enquiry Number */}
                             <div>
                                 <label className="block text-sm font-medium mb-1">
                                     Enquiry Number
@@ -180,6 +259,7 @@ const Enquiries = () => {
                                 />
                             </div>
 
+                            {/* Customer */}
                             <div>
                                 <label className="block text-sm font-medium mb-1">Customer</label>
 
@@ -198,8 +278,22 @@ const Enquiries = () => {
                                         </option>
                                     ))}
                                 </select>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowCustomerForm(!showCustomerForm)
+                                        setCustomerError('')
+                                    }}
+                                    className="mt-2 text-sm text-blue-600 hover:text-blue-700"
+                                >
+                                    {showCustomerForm
+                                        ? '− Close Customer Form'
+                                        : '+ Add New Customer'}
+                                </button>
                             </div>
 
+                            {/* Enquiry Date */}
                             <div>
                                 <label className="block text-sm font-medium mb-1">
                                     Enquiry Date
@@ -215,6 +309,7 @@ const Enquiries = () => {
                                 />
                             </div>
 
+                            {/* Required Date */}
                             <div>
                                 <label className="block text-sm font-medium mb-1">
                                     Required Date
@@ -229,6 +324,132 @@ const Enquiries = () => {
                                 />
                             </div>
                         </div>
+
+                        {/* Add Customer Form */}
+                        {showCustomerForm && (
+                            <div className="mt-5 p-5 bg-gray-50 border border-gray-200 rounded-lg">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+                                    <div>
+                                        <h3 className="font-semibold text-gray-900">
+                                            Add New Customer
+                                        </h3>
+
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Create a customer without leaving the enquiry form.
+                                        </p>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCustomerForm(false)}
+                                        className="text-sm text-gray-500 hover:text-gray-700 self-start sm:self-auto"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+
+                                {customerError && (
+                                    <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded-md">
+                                        {customerError}
+                                    </div>
+                                )}
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Company Name */}
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">
+                                            Company Name *
+                                        </label>
+
+                                        <input
+                                            type="text"
+                                            name="company_name"
+                                            value={customerForm.company_name}
+                                            onChange={handleCustomerChange}
+                                            placeholder="ABC Technologies"
+                                            required
+                                            className="w-full border border-gray-300 rounded-md px-3 py-2"
+                                        />
+                                    </div>
+
+                                    {/* Contact Person */}
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">
+                                            Contact Person *
+                                        </label>
+
+                                        <input
+                                            type="text"
+                                            name="contact_person"
+                                            value={customerForm.contact_person}
+                                            onChange={handleCustomerChange}
+                                            placeholder="Rahul Sharma"
+                                            required
+                                            className="w-full border border-gray-300 rounded-md px-3 py-2"
+                                        />
+                                    </div>
+
+                                    {/* Mobile */}
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">
+                                            Mobile
+                                        </label>
+
+                                        <input
+                                            type="text"
+                                            name="mobile"
+                                            value={customerForm.mobile}
+                                            onChange={handleCustomerChange}
+                                            placeholder="9876543210"
+                                            className="w-full border border-gray-300 rounded-md px-3 py-2"
+                                        />
+                                    </div>
+
+                                    {/* Email */}
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">
+                                            Email
+                                        </label>
+
+                                        <input
+                                            type="email"
+                                            name="email"
+                                            value={customerForm.email}
+                                            onChange={handleCustomerChange}
+                                            placeholder="contact@example.com"
+                                            className="w-full border border-gray-300 rounded-md px-3 py-2"
+                                        />
+                                    </div>
+
+                                    {/* City */}
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">
+                                            City
+                                        </label>
+
+                                        <input
+                                            type="text"
+                                            name="city"
+                                            value={customerForm.city}
+                                            onChange={handleCustomerChange}
+                                            placeholder="Bhubaneswar"
+                                            className="w-full border border-gray-300 rounded-md px-3 py-2"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 flex justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={createCustomer}
+                                        disabled={creatingCustomer}
+                                        className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm disabled:opacity-50"
+                                    >
+                                        {creatingCustomer ? 'Creating...' : 'Create Customer'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Notes */}
                         <div className="mt-4">
@@ -295,14 +516,14 @@ const Enquiries = () => {
                                             onChange={e =>
                                                 handleItemChange(index, 'quantity', e.target.value)
                                             }
-                                            className="w-28 border border-gray-300 rounded-md px-3 py-2"
+                                            className="w-full sm:w-28 border border-gray-300 rounded-md px-3 py-2"
                                         />
 
                                         {items.length > 1 && (
                                             <button
                                                 type="button"
                                                 onClick={() => removeItem(index)}
-                                                className="text-red-600 px-2"
+                                                className="text-red-600 px-2 text-left sm:text-center"
                                             >
                                                 Remove
                                             </button>
@@ -312,6 +533,7 @@ const Enquiries = () => {
                             </div>
                         </div>
 
+                        {/* Submit */}
                         <div className="mt-6 flex justify-end">
                             <button
                                 type="submit"

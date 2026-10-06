@@ -1,5 +1,5 @@
 import express from "express";
-import { createEnquiry } from "../controllers/enquiry.controller.js";
+import { createEnquiry , getEnquiries } from "../controllers/enquiry.controller.js";
 import { authenticate } from "../middleware/auth.middleware.js";
 import { authorize } from "../middleware/role.middleware.js";
 
@@ -11,5 +11,12 @@ router.post(
     authorize("SALES_USER"),
     createEnquiry
 );
+
+router.get("/",
+    authenticate,
+    getEnquiries
+)
+
+router.get("/", authenticate, getEnquiries )
 
 export default router;

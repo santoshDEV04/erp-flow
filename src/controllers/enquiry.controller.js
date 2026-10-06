@@ -155,3 +155,66 @@ export const createEnquiry = async (req, res) => {
         client.release();
     }
 };
+
+export const getEnquiries = async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT
+                e.id,
+                e.enquiry_number,
+                e.enquiry_date,
+                e.required_date,
+                e.status,
+                e.notes,
+                e.created_at,
+
+                c.id AS customer_id,
+                c.company_name,
+                c.contact_person,
+                c.mobile,
+                c.email,
+                c.city,
+
+                COALESCE(
+                    JSON_AGG(
+                        JSON_BUILD_OBJECT(
+                            'product_id', p.id,
+                            'product_code', p.product_code,
+                            'product_name', p.name,
+                            'quantity', ei.quantity,
+                            'unit', p.unit
+                        )
+                    ) FILTER (WHERE ei.id IS NOT NULL),
+                    '[]'
+                ) AS items
+
+            FROM enquiries e
+
+            JOIN customers c
+                ON e.customer_id = c.id
+
+            LEFT JOIN enquiry_items ei
+                ON e.id = ei.enquiry_id
+
+            LEFT JOIN products p
+                ON ei.product_id = p.id
+
+            GROUP BY
+                e.id,
+                c.id
+
+            ORDER BY e.created_at DESC`
+        );
+
+        return res.status(200).json({
+            enquiries: result.rows
+        });
+
+    } catch (error) {
+        console.error("Get enquiries error:", error);
+
+        return res.status(500).json({
+            message: "Internal server error"
+        });
+    }
+};
